@@ -64,7 +64,7 @@ project.ext {
     exoPlayerVersion = "2.14.2"
     audioPlayerVersion = "v2.0.0"
 
-    // Only used for free builds. This version should be updated regularly.fsdfg
+    // Only used for free builds. This version should be updated regularly.fsdfgdsf
     conscryptVersion = "2.5.2"
 
     // Google Play build
