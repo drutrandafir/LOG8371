@@ -27,7 +27,7 @@ import de.danoeh.antennapod.core.service.download.DownloadStatus;
 import de.danoeh.antennapod.core.storage.DBReader;
 import de.danoeh.antennapod.core.storage.DBTasks;
 import de.danoeh.antennapod.core.storage.DBWriter;
-import de.danoeh.antennapod.parser.feed.util.DateUtils;
+import de.danoeh.antennapod.core.util.DateUtils;
 import de.danoeh.antennapod.core.util.DownloadError;
 import de.danoeh.antennapod.model.feed.Feed;
 import de.danoeh.antennapod.model.feed.FeedItem;
@@ -178,7 +178,7 @@ public class LocalFeedUpdater {
     private static FeedItem createFeedItem(Feed feed, DocumentFile file, Context context) {
         FeedItem item = new FeedItem(0, file.getName(), UUID.randomUUID().toString(),
                 file.getName(), new Date(file.lastModified()), FeedItem.UNPLAYED, feed);
-        item.disableAutoDownload();
+        item.setAutoDownload(false);
 
         long size = file.length();
         FeedMedia media = new FeedMedia(0, item, 0, 0, size, file.getType(),
