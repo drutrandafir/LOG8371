@@ -3,7 +3,7 @@ apply from: "../../common.gradle"
 
 dependencies {
     implementation project(':model')
-
+    implementation 'com.android.support:multidex:1.0.3'
     annotationProcessor "androidx.annotation:annotation:$annotationVersion"
 
     testImplementation "junit:junit:$junitVersion"
