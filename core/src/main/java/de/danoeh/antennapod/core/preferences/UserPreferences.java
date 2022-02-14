@@ -8,7 +8,6 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 
-import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.app.NotificationCompat;
@@ -40,7 +39,6 @@ import de.danoeh.antennapod.core.storage.ExceptFavoriteCleanupAlgorithm;
 import de.danoeh.antennapod.core.storage.APNullCleanupAlgorithm;
 import de.danoeh.antennapod.core.storage.APQueueCleanupAlgorithm;
 import de.danoeh.antennapod.core.storage.EpisodeCleanupAlgorithm;
-import de.danoeh.antennapod.core.util.Converter;
 import de.danoeh.antennapod.model.feed.SortOrder;
 import de.danoeh.antennapod.core.util.download.AutoUpdateManager;
 
@@ -71,6 +69,7 @@ public class UserPreferences {
     public static final String PREF_BACK_BUTTON_BEHAVIOR = "prefBackButtonBehavior";
     private static final String PREF_BACK_BUTTON_GO_TO_PAGE = "prefBackButtonGoToPage";
     public static final String PREF_FILTER_FEED = "prefSubscriptionsFilter";
+    public static final String PREF_SUBSCRIPTION_TITLE = "prefSubscriptionTitle";
 
     public static final String PREF_QUEUE_KEEP_SORTED = "prefQueueKeepSorted";
     public static final String PREF_QUEUE_KEEP_SORTED_ORDER = "prefQueueKeepSortedOrder";
@@ -87,7 +86,7 @@ public class UserPreferences {
     private static final String PREF_AUTO_DELETE = "prefAutoDelete";
     public static final String PREF_SMART_MARK_AS_PLAYED_SECS = "prefSmartMarkAsPlayedSecs";
     private static final String PREF_PLAYBACK_SPEED_ARRAY = "prefPlaybackSpeedArray";
-    private static final String PREF_PAUSE_PLAYBACK_FOR_FOCUS_LOSS = "prefPauseForFocusLoss";
+    public static final String PREF_PAUSE_PLAYBACK_FOR_FOCUS_LOSS = "prefPauseForFocusLoss";
     private static final String PREF_RESUME_AFTER_CALL = "prefResumeAfterCall";
     public static final String PREF_VIDEO_BEHAVIOR = "prefVideoBehavior";
     private static final String PREF_TIME_RESPECTS_SPEED = "prefPlaybackTimeRespectsSpeed";
@@ -116,7 +115,6 @@ public class UserPreferences {
 
     // Other
     private static final String PREF_DATA_FOLDER = "prefDataFolder";
-    public static final String PREF_IMAGE_CACHE_SIZE = "prefImageCacheSize";
     public static final String PREF_DELETE_REMOVES_FROM_QUEUE = "prefDeleteRemovesFromQueue";
     public static final String PREF_USAGE_COUNTING_DATE = "prefUsageCounting";
 
@@ -129,8 +127,6 @@ public class UserPreferences {
     private static final String PREF_FAST_FORWARD_SECS = "prefFastForwardSecs";
     private static final String PREF_REWIND_SECS = "prefRewindSecs";
     private static final String PREF_QUEUE_LOCKED = "prefQueueLocked";
-    private static final String IMAGE_CACHE_DEFAULT_VALUE = "100";
-    private static final int IMAGE_CACHE_SIZE_MINIMUM = 20;
     private static final String PREF_LEFT_VOLUME = "prefLeftVolume";
     private static final String PREF_RIGHT_VOLUME = "prefRightVolume";
 
@@ -212,7 +208,7 @@ public class UserPreferences {
     public static List<Integer> getCompactNotificationButtons() {
         String[] buttons = TextUtils.split(
                 prefs.getString(PREF_COMPACT_NOTIFICATION_BUTTONS,
-                        String.valueOf(NOTIFICATION_BUTTON_SKIP)),
+                        NOTIFICATION_BUTTON_REWIND + "," + NOTIFICATION_BUTTON_FAST_FORWARD),
                 ",");
         List<Integer> notificationButtons = new ArrayList<>();
         for (String button : buttons) {
@@ -471,26 +467,8 @@ public class UserPreferences {
         return readPlaybackSpeedArray(prefs.getString(PREF_PLAYBACK_SPEED_ARRAY, null));
     }
 
-    public static float getLeftVolume() {
-        int volume = prefs.getInt(PREF_LEFT_VOLUME, 100);
-        return Converter.getVolumeFromPercentage(volume);
-    }
-
-    public static float getRightVolume() {
-        int volume = prefs.getInt(PREF_RIGHT_VOLUME, 100);
-        return Converter.getVolumeFromPercentage(volume);
-    }
-
-    public static int getLeftVolumePercentage() {
-        return prefs.getInt(PREF_LEFT_VOLUME, 100);
-    }
-
-    public static int getRightVolumePercentage() {
-        return prefs.getInt(PREF_RIGHT_VOLUME, 100);
-    }
-
     public static boolean shouldPauseForFocusLoss() {
-        return prefs.getBoolean(PREF_PAUSE_PLAYBACK_FOR_FOCUS_LOSS, false);
+        return prefs.getBoolean(PREF_PAUSE_PLAYBACK_FOR_FOCUS_LOSS, true);
     }
 
 
@@ -553,7 +531,8 @@ public class UserPreferences {
     private static void setAllowMobileFor(String type, boolean allow) {
         HashSet<String> defaultValue = new HashSet<>();
         defaultValue.add("images");
-        Set<String> allowed = prefs.getStringSet(PREF_MOBILE_UPDATE, defaultValue);
+        final Set<String> getValueStringSet = prefs.getStringSet(PREF_MOBILE_UPDATE, defaultValue);
+        final Set<String> allowed = new HashSet<>(getValueStringSet);
         if (allow) {
             allowed.add(type);
         } else {
@@ -616,18 +595,6 @@ public class UserPreferences {
         return Build.VERSION.SDK_INT < 29 && prefs.getBoolean(PREF_ENABLE_AUTODL_WIFI_FILTER, false);
     }
 
-    public static int getImageCacheSize() {
-        String cacheSizeString = prefs.getString(PREF_IMAGE_CACHE_SIZE, IMAGE_CACHE_DEFAULT_VALUE);
-        int cacheSizeInt = Integer.parseInt(cacheSizeString);
-        // if the cache size is too small the user won't get any images at all
-        // that's bad, force it back to the default.
-        if (cacheSizeInt < IMAGE_CACHE_SIZE_MINIMUM) {
-            prefs.edit().putString(PREF_IMAGE_CACHE_SIZE, IMAGE_CACHE_DEFAULT_VALUE).apply();
-            cacheSizeInt = Integer.parseInt(IMAGE_CACHE_DEFAULT_VALUE);
-        }
-        return cacheSizeInt * 1024 * 1024;
-    }
-
     public static int getFastForwardSecs() {
         return prefs.getInt(PREF_FAST_FORWARD_SECS, 30);
     }
@@ -644,6 +611,11 @@ public class UserPreferences {
     public static void setProxyConfig(ProxyConfig config) {
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(PREF_PROXY_TYPE, config.type.name());
+        Proxy.Type type = Proxy.Type.valueOf(config.type.name());
+        if (type == Proxy.Type.DIRECT) {
+            editor.apply();
+            return;
+        }
         if(TextUtils.isEmpty(config.host)) {
             editor.remove(PREF_PROXY_HOST);
         } else {
@@ -724,14 +696,6 @@ public class UserPreferences {
         }
         prefs.edit()
              .putString(PREF_PLAYBACK_SPEED_ARRAY, jsonArray.toString())
-             .apply();
-    }
-
-    public static void setVolume(@IntRange(from = 0, to = 100) int leftVolume,
-                                 @IntRange(from = 0, to = 100) int rightVolume) {
-        prefs.edit()
-             .putInt(PREF_LEFT_VOLUME, leftVolume)
-             .putInt(PREF_RIGHT_VOLUME, rightVolume)
              .apply();
     }
 
@@ -855,7 +819,7 @@ public class UserPreferences {
             }
         }
         // If this preference hasn't been set yet, return the default options
-        return Arrays.asList(0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f);
+        return Arrays.asList(1.0f, 1.25f, 1.5f);
     }
 
     public static String getMediaPlayer() {
@@ -1127,4 +1091,13 @@ public class UserPreferences {
     public static void unsetUsageCountingDate() {
         setUsageCountingDateMillis(-1);
     }
+
+    public static boolean shouldShowSubscriptionTitle() {
+        return prefs.getBoolean(PREF_SUBSCRIPTION_TITLE, false);
+    }
+
+    public static void setSubscriptionTitleSetting(boolean showTitle) {
+        prefs.edit().putBoolean(PREF_SUBSCRIPTION_TITLE, showTitle).apply();
+    }
+
 }

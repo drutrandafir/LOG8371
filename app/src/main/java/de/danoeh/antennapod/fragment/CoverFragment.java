@@ -45,13 +45,13 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import de.danoeh.antennapod.R;
 import de.danoeh.antennapod.activity.MainActivity;
-import de.danoeh.antennapod.core.event.PlaybackPositionEvent;
+import de.danoeh.antennapod.event.playback.PlaybackPositionEvent;
 import de.danoeh.antennapod.model.feed.FeedMedia;
 import de.danoeh.antennapod.core.feed.util.ImageResourceUtils;
 import de.danoeh.antennapod.core.glide.ApGlideSettings;
 import de.danoeh.antennapod.core.util.ChapterUtils;
-import de.danoeh.antennapod.core.util.DateUtils;
-import de.danoeh.antennapod.core.util.EmbeddedChapterImage;
+import de.danoeh.antennapod.core.util.DateFormatter;
+import de.danoeh.antennapod.model.feed.EmbeddedChapterImage;
 import de.danoeh.antennapod.core.util.playback.PlaybackController;
 import de.danoeh.antennapod.model.feed.Chapter;
 import de.danoeh.antennapod.model.playback.Playable;
@@ -110,9 +110,8 @@ public class CoverFragment extends Fragment {
         butNextChapter.setColorFilter(colorFilter);
         butPrevChapter.setColorFilter(colorFilter);
         descriptionIcon.setColorFilter(colorFilter);
-        ChaptersFragment chaptersFragment = new ChaptersFragment();
         chapterControl.setOnClickListener(v ->
-                chaptersFragment.show(getChildFragmentManager(), ChaptersFragment.TAG));
+                new ChaptersFragment().show(getChildFragmentManager(), ChaptersFragment.TAG));
         butPrevChapter.setOnClickListener(v -> seekToPrevChapter());
         butNextChapter.setOnClickListener(v -> seekToNextChapter());
 
@@ -150,14 +149,19 @@ public class CoverFragment extends Fragment {
     }
 
     private void displayMediaInfo(@NonNull Playable media) {
-        String pubDateStr = DateUtils.formatAbbrev(getActivity(), media.getPubDate());
+        String pubDateStr = DateFormatter.formatAbbrev(getActivity(), media.getPubDate());
         txtvPodcastTitle.setText(StringUtils.stripToEmpty(media.getFeedTitle())
                 + "\u00A0"
                 + "・"
                 + "\u00A0"
                 + StringUtils.replace(StringUtils.stripToEmpty(pubDateStr), " ", "\u00A0"));
-        Intent openFeed = MainActivity.getIntentToOpenFeed(requireContext(), ((FeedMedia) media).getItem().getFeedId());
-        txtvPodcastTitle.setOnClickListener(v -> startActivity(openFeed));
+        if (media instanceof FeedMedia) {
+            Intent openFeed = MainActivity.getIntentToOpenFeed(requireContext(),
+                    ((FeedMedia) media).getItem().getFeedId());
+            txtvPodcastTitle.setOnClickListener(v -> startActivity(openFeed));
+        } else {
+            txtvPodcastTitle.setOnClickListener(null);
+        }
         txtvPodcastTitle.setOnLongClickListener(v -> copyText(media.getFeedTitle()));
         txtvEpisodeTitle.setText(media.getEpisodeTitle());
         txtvEpisodeTitle.setOnLongClickListener(v -> copyText(media.getEpisodeTitle()));

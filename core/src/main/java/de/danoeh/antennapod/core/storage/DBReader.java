@@ -565,17 +565,45 @@ public final class DBReader {
     }
 
     /**
+     * Get next feed item in queue following a particular feeditem
+     *
+     * @param item The FeedItem
+     * @return The FeedItem next in queue or null if the FeedItem could not be found.
+     */
+    @Nullable
+    public static FeedItem getNextInQueue(FeedItem item) {
+        Log.d(TAG, "getNextInQueue() called with: " + "itemId = [" + item.getId() + "]");
+        PodDBAdapter adapter = PodDBAdapter.getInstance();
+        adapter.open();
+        try {
+            FeedItem nextItem = null;
+            try (Cursor cursor = adapter.getNextInQueue(item)) {
+                List<FeedItem> list = extractItemlistFromCursor(adapter, cursor);
+                if (!list.isEmpty()) {
+                    nextItem = list.get(0);
+                    loadAdditionalFeedItemListData(list);
+                }
+                return nextItem;
+            } catch (Exception e) {
+                return null;
+            }
+        } finally {
+            adapter.close();
+        }
+    }
+
+    /**
      * Loads a specific FeedItem from the database.
      *
-     * @param podcastUrl the corresponding feed's url
+     * @param guid feed item guid
      * @param episodeUrl the feed item's url
      * @return The FeedItem or null if the FeedItem could not be found.
      *          Does NOT load additional attributes like feed or queue state.
      */
     @Nullable
-    private static FeedItem getFeedItemByUrl(final String podcastUrl, final String episodeUrl, PodDBAdapter adapter) {
-        Log.d(TAG, "Loading feeditem with podcast url " + podcastUrl + " and episode url " + episodeUrl);
-        try (Cursor cursor = adapter.getFeedItemCursor(podcastUrl, episodeUrl)) {
+    private static FeedItem getFeedItemByGuidOrEpisodeUrl(final String guid, final String episodeUrl,
+            PodDBAdapter adapter) {
+        try (Cursor cursor = adapter.getFeedItemCursor(guid, episodeUrl)) {
             if (!cursor.moveToNext()) {
                 return null;
             }
@@ -626,18 +654,16 @@ public final class DBReader {
     /**
      * Loads a specific FeedItem from the database.
      *
-     * @param podcastUrl the corresponding feed's url
+     * @param guid feed item guid
      * @param episodeUrl the feed item's url
      * @return The FeedItem or null if the FeedItem could not be found.
      *          Does NOT load additional attributes like feed or queue state.
      */
-    public static FeedItem getFeedItemByUrl(final String podcastUrl, final String episodeUrl) {
-        Log.d(TAG, "getFeedItem() called with: " + "podcastUrl = [" + podcastUrl + "], episodeUrl = [" + episodeUrl + "]");
-
+    public static FeedItem getFeedItemByGuidOrEpisodeUrl(final String guid, final String episodeUrl) {
         PodDBAdapter adapter = PodDBAdapter.getInstance();
         adapter.open();
         try {
-            return getFeedItemByUrl(podcastUrl, episodeUrl, adapter);
+            return getFeedItemByGuidOrEpisodeUrl(guid, episodeUrl, adapter);
         } finally {
             adapter.close();
         }
@@ -880,7 +906,7 @@ public final class DBReader {
         int numDownloadedItems = adapter.getNumberOfDownloadedEpisodes();
 
         List<NavDrawerData.DrawerItem> items = new ArrayList<>();
-        Map<String, NavDrawerData.FolderDrawerItem> folders = new HashMap<>();
+        Map<String, NavDrawerData.TagDrawerItem> folders = new HashMap<>();
         for (Feed feed : feeds) {
             for (String tag : feed.getPreferences().getTags()) {
                 NavDrawerData.FeedDrawerItem drawerItem = new NavDrawerData.FeedDrawerItem(feed, feed.getId(),
@@ -889,18 +915,18 @@ public final class DBReader {
                     items.add(drawerItem);
                     continue;
                 }
-                NavDrawerData.FolderDrawerItem folder;
+                NavDrawerData.TagDrawerItem folder;
                 if (folders.containsKey(tag)) {
                     folder = folders.get(tag);
                 } else {
-                    folder = new NavDrawerData.FolderDrawerItem(tag);
+                    folder = new NavDrawerData.TagDrawerItem(tag);
                     folders.put(tag, folder);
                 }
                 drawerItem.id |= folder.id;
                 folder.children.add(drawerItem);
             }
         }
-        List<NavDrawerData.FolderDrawerItem> foldersSorted = new ArrayList<>(folders.values());
+        List<NavDrawerData.TagDrawerItem> foldersSorted = new ArrayList<>(folders.values());
         Collections.sort(foldersSorted, (o1, o2) -> o1.getTitle().compareToIgnoreCase(o2.getTitle()));
         items.addAll(foldersSorted);
 

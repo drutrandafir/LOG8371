@@ -1,11 +1,11 @@
 android {
-    compileSdkVersion 30
+    compileSdkVersion 31
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 19
         targetSdkVersion 30
 
-        multiDexEnabled true
+        multiDexEnabled false
         vectorDrawables.useSupportLibrary true
         vectorDrawables.generatedDensities = []
 
@@ -52,8 +52,8 @@ android {
         checkGeneratedSources = true
     }
 
-    viewBinding {
-        enabled = true
+    buildFeatures {
+        viewBinding true
     }
 }
 
@@ -86,7 +86,7 @@ gradle.taskGraph.beforeTask { task ->
         task.doLast {
             def reportFile = task.project.file("build/reports/spotbugs/playDebug.xml")
             if (!reportFile.exists()) return
-            def slurped = new XmlSlurper().parse(reportFile)
+            def slurped = new groovy.xml.XmlSlurper().parse(reportFile)
 
             def foundErrors = false
             slurped['BugInstance'].each { bug ->
